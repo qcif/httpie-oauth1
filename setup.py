@@ -1,11 +1,13 @@
 # setup.py
 #
-# Example usage:
+# To install:
 #
 #     pip install .
 #
-#     python3 setup.py develop
+# To setup for development:
+#
 #     pip install --editable .
+# ----------------------------------------------------------------
 
 from setuptools import setup
 
@@ -16,8 +18,8 @@ setup(
     author='Hoylen Sue',
     author_email='hoylen@hoylen.com',
     license='BSD',
-    url='https://github.com/hoylen/httpie-oauth1',
-    download_url='https://github.com/hoylen/httpie-oauth1',
+    url='https://github.com/qcif/httpie-oauth1',
+    download_url='https://github.com/qcif/httpie-oauth1',
     py_modules=['httpie_oauth1'],
     zip_safe=False,
     entry_points={
