@@ -354,7 +354,7 @@ class OAuth1HmacSha1Plugin(AuthPlugin):
 
     name = 'OAuth 1.0a HMAC-SHA1'
 
-    description = '--auth clientId:clientSecret'
+    description = '--auth clientId[:clientSecret]'
 
     # This plugin requires credentials to be specified with `--auth`
     auth_require = True
@@ -393,7 +393,7 @@ class OAuth1HmacSha256Plugin(AuthPlugin):
 
     name = 'OAuth 1.0a HMAC-SHA256'
 
-    description = '--auth clientId:clientSecret'
+    description = '--auth clientId[:clientSecret]'
 
     # This plugin requires credentials to be specified with `--auth`
     auth_require = True
@@ -432,7 +432,7 @@ class OAuth1HmacSha512Plugin(AuthPlugin):
 
     name = 'OAuth 1.0a HMAC-SHA512'
 
-    description = '--auth clientId:clientSecret'
+    description = '--auth clientId[:clientSecret]'
 
     # This plugin requires credentials to be specified with `--auth`
     auth_require = True
@@ -471,7 +471,7 @@ class OAuth1PlaintextPlugin(AuthPlugin):
 
     name = 'OAuth 1.0a PLAINTEXT'
 
-    description = '--auth clientId:clientSecret'
+    description = '--auth clientId[:clientSecret]'
 
     # This plugin requires credentials to be specified with `--auth`
     auth_require = True

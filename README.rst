@@ -152,21 +152,12 @@ You can also use `HTTPie sessions <https://httpie.org/doc#sessions>`_:
 Troubleshooting
 ...............
 
-Dependencies
-++++++++++++
+ModuleNotFoundError: No module named 'jwt'
+++++
 
-This plugin also install *PyJWT* and PyCA's *cryptography* packages.
+The `PyJWT <https://github.com/jpadilla/pyjwt>`_ module is not installed.
 
-On CentOS 7, it might be easier to use *yum* to install "epel-release"
-and then the "python2-cryptography" packages, since *pip install*
-requires C code to be compile the cryptography package.
+AttributeError: module 'jwt.algorithms' has no attribute 'RSAAlgorithm'
+++++
 
-ImportError: No module named jwt.algorithms
-+++++++++++++++++++++++++++++++++++++++++++
-
-The *PyJWT* module is not available. Please install it.
-
-AttributeError: 'module' object has no attribute 'RSAAlgorithm'
-+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-The PyCA's *cryptography* module is not available. Please install it.
+The PyCA's `cryptography <https://cryptography.io/>`_ module is not installed.

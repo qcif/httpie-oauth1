@@ -66,6 +66,10 @@ venv-create:
 venv-delete:
 	@rm -rf venv
 
+# Delete any current venv and recreate it.
+
+venv-reset: venv-delete venv-create install-dev install-local-deps
+
 #----------------------------------------------------------------
 
 install-dev:
