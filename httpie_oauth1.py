@@ -1,27 +1,24 @@
-"""Plugin for HTTPie for 2-legged OAuth 1.0a with RSA-SHA1 authentication.
+"""Authentication plugin for HTTPie for 2-legged OAuth 1.0a.
 
-This plugin allows the "RSA-SHA1" signature method to be used with HTTPie.
+This plugin allows the OAuth 1.0a authentication to be used with HTTPie.
+It supports all the standard signature methods defined by OAuth 1.0a:
 
-The authentication parameter is treated as a list of colon separated fields.
+- HMAC-SHA1
+- RSA-SHA1
+- PLAINTEXT
 
-The first field is the client identifier, and is used as the
-oauth_client_key parameter.
+It also supports non-standard variants that replace SHA-1 more secure digest
+algorithms:
 
-The second parameter is the name of a file containing the RSA private
-key. The file must contain a PEM formatted RSA private key.  The
-filename can have an absolute or relative path. Password protected private
-keys are not supported.
-
-If the file name is omitted, the program will prompt for it.
-
-If the client identifier is an empty string, the program attempts
-to look for an "oauth_client_key" parameter from the beginning of the
-private key file.
+- HMAC-SHA256
+- HMAC-SHA512
+- RSA-SHA256
+- RSA-SHA512
 
 Note: the term "client identifier or "client ID" will be used to refer to
 the OAuth concepts of "client key" and "consumer key", and the HTTPie
-concept of a username. It is a string that identifies the client, and must
-not be confused with an RSA public or private key.
+concept of a username. It is a string that identifies the client, and is not to
+be confused with an RSA public or private key.
 """
 
 import sys
@@ -31,18 +28,35 @@ from httpie.plugins import AuthPlugin
 from requests_oauthlib import OAuth1
 from oauthlib.oauth1 import \
     SIGNATURE_HMAC_SHA1, \
-    SIGNATURE_RSA, \
-    SIGNATURE_PLAINTEXT, \
-    SIGNATURE_HMAC_SHA256
+    SIGNATURE_HMAC_SHA256, \
+    SIGNATURE_HMAC_SHA512, \
+    SIGNATURE_RSA_SHA1, \
+    SIGNATURE_RSA_SHA256, \
+    SIGNATURE_RSA_SHA512, \
+    SIGNATURE_PLAINTEXT
 
-__version__ = '1.0.0'
+__version__ = '1.1.0'
 __author__ = 'Hoylen Sue'
 __licence__ = 'BSD'
 
+
 # ================================================================
 
-
 class _OAuth1RsaPluginBase(AuthPlugin, ABC):
+    """
+    Base class for RSA-based plugins.
+
+    For all RSA-based signature methods, the `--auth` option is mandatory
+    and must contain either:
+
+     - the filename of a PEM formatted RSA private key; or
+     - the client ID and the filename, separated by a single colon.
+
+    When only the filename is provided, the file must contain both the PEM
+    formatted private key and the client ID in the preamble before the private
+    key. The client ID must be on a line with "oauth_consumer_key", followed
+    by a colon, followed by the value of the client ID.
+    """
 
     description = '--auth [clientId:]privateKeyFile'
 
@@ -232,8 +246,10 @@ class _OAuth1RsaPluginBase(AuthPlugin, ABC):
 
 # ================================================================
 
-
 class OAuth1RsaSha1Plugin(_OAuth1RsaPluginBase):
+    """
+    Plugin for RSA-SHA1.
+    """
 
     # This plugin is activated if this value is the argument to `--auth-type`
     auth_type = 'oauth1-rsa-sha1'
@@ -256,76 +272,82 @@ class OAuth1RsaSha1Plugin(_OAuth1RsaPluginBase):
         private_key, client_id = self.get_key_and_client_id()
 
         return OAuth1(client_key=client_id,
-                      signature_method=SIGNATURE_RSA,
+                      signature_method=SIGNATURE_RSA_SHA1,
                       rsa_key=private_key)
 
 
 # ================================================================
 
+class OAuth1RsaSha256Plugin(_OAuth1RsaPluginBase):
+    """
+    Plugin for RSA-SHA256.
+    """
 
-# class OAuth1RsaSha256Plugin(_OAuth1RsaPluginBase):
-#
-#     # This plugin is activated if this value is the argument to `--auth-type`
-#     auth_type = 'oauth1-rsa-sha256'
-#
-#     name = 'OAuth 1.0a RSA-SHA256'
-#
-#     # ----------------------------------------------------------------
-#
-#     def get_auth(self, username=None, password=None):
-#         """
-#         Generate OAuth 1.0a 2-legged RSA-SHA256 authentication for HTTPie.
-#
-#         This is a non-standard signature method, but is more stronger
-#         than the standard RSA-SHA1 signature method.
-#
-#         :param username: ignored since auth_parse is False
-#         :param password: ignored since auth_parse is False
-#         :return: requests_oauthlib.oauth1_auth.OAuth1 object
-#         """
-#
-#         private_key, client_id = self.get_key_and_client_id()
-#
-#         return OAuth1(client_key=client_id,
-#                       signature_method=SIGNATURE_RSA_SHA256,
-#                       rsa_key=private_key)
+    # This plugin is activated if this value is the argument to `--auth-type`
+    auth_type = 'oauth1-rsa-sha256'
 
+    name = 'OAuth 1.0a RSA-SHA256'
 
-# ================================================================
+    # ----------------------------------------------------------------
 
+    def get_auth(self, username=None, password=None):
+        """
+        Generate OAuth 1.0a 2-legged RSA-SHA256 authentication for HTTPie.
 
-# class OAuth1RsaSha512Plugin(_OAuth1RsaPluginBase):
-#
-#     # This plugin is activated if this value is the argument to `--auth-type`
-#     auth_type = 'oauth1-rsa-sha512'
-#
-#     name = 'OAuth 1.0a RSA-SHA512'
-#
-#     # ----------------------------------------------------------------
-#
-#     def get_auth(self, username=None, password=None):
-#         """
-#         Generate OAuth 1.0a 2-legged RSA-SHA512 authentication for HTTPie.
-#
-#         This is a non-standard signature method, but is more stronger
-#         than the standard RSA-SHA1 signature method.
-#
-#         :param username: ignored since auth_parse is False
-#         :param password: ignored since auth_parse is False
-#         :return: requests_oauthlib.oauth1_auth.OAuth1 object
-#         """
-#
-#         private_key, client_id = self.get_key_and_client_id()
-#
-#         return OAuth1(client_key=client_id,
-#                       signature_method=SIGNATURE_RSA_SHA512,
-#                       rsa_key=private_key)
+        This is a non-standard signature method, but is more stronger
+        than the standard RSA-SHA1 signature method.
+
+        :param username: ignored since auth_parse is False
+        :param password: ignored since auth_parse is False
+        :return: requests_oauthlib.oauth1_auth.OAuth1 object
+        """
+
+        private_key, client_id = self.get_key_and_client_id()
+
+        return OAuth1(client_key=client_id,
+                      signature_method=SIGNATURE_RSA_SHA256,
+                      rsa_key=private_key)
 
 
 # ================================================================
 
+class OAuth1RsaSha512Plugin(_OAuth1RsaPluginBase):
+    """
+    Plugin for RSA-SHA256.
+    """
+
+    # This plugin is activated if this value is the argument to `--auth-type`
+    auth_type = 'oauth1-rsa-sha512'
+
+    name = 'OAuth 1.0a RSA-SHA512'
+
+    # ----------------------------------------------------------------
+
+    def get_auth(self, username=None, password=None):
+        """
+        Generate OAuth 1.0a 2-legged RSA-SHA512 authentication for HTTPie.
+
+        This is a non-standard signature method, but is more stronger
+        than the standard RSA-SHA1 signature method.
+
+        :param username: ignored since auth_parse is False
+        :param password: ignored since auth_parse is False
+        :return: requests_oauthlib.oauth1_auth.OAuth1 object
+        """
+
+        private_key, client_id = self.get_key_and_client_id()
+
+        return OAuth1(client_key=client_id,
+                      signature_method=SIGNATURE_RSA_SHA512,
+                      rsa_key=private_key)
+
+
+# ================================================================
 
 class OAuth1HmacSha1Plugin(AuthPlugin):
+    """
+    Plugin for HMAC-SHA1.
+    """
 
     # This plugin is activated if this value is the argument to `--auth-type`
     auth_type = 'oauth1-hmac-sha1'
@@ -358,10 +380,13 @@ class OAuth1HmacSha1Plugin(AuthPlugin):
                       signature_method=SIGNATURE_HMAC_SHA1,
                       client_secret=password)
 
+
 # ================================================================
 
-
 class OAuth1HmacSha256Plugin(AuthPlugin):
+    """
+    Plugin for HMAC-SHA256.
+    """
 
     # This plugin is activated if this value is the argument to `--auth-type`
     auth_type = 'oauth1-hmac-sha256'
@@ -394,10 +419,52 @@ class OAuth1HmacSha256Plugin(AuthPlugin):
                       signature_method=SIGNATURE_HMAC_SHA256,
                       client_secret=password)
 
+
 # ================================================================
 
+class OAuth1HmacSha512Plugin(AuthPlugin):
+    """
+    Plugin for HMAC-SHA512.
+    """
+
+    # This plugin is activated if this value is the argument to `--auth-type`
+    auth_type = 'oauth1-hmac-sha512'
+
+    name = 'OAuth 1.0a HMAC-SHA512'
+
+    description = '--auth clientId:clientSecret'
+
+    # This plugin requires credentials to be specified with `--auth`
+    auth_require = True
+
+    # This plugin wants the argument to `--auth` to be parsed by HTTPie
+    auth_parse = True
+
+    # This plugin can prompt for a password
+    prompt_password = True
+
+    # ----------------------------------------------------------------
+
+    def get_auth(self, username=None, password=None):
+        """
+        Generate OAuth 1.0a 2-legged HMAC-SHA512 authentication for HTTPie.
+
+        :param username: client key
+        :param password: client secret
+        :return: requests_oauthlib.oauth1_auth.OAuth1 object
+        """
+
+        return OAuth1(client_key=username,
+                      signature_method=SIGNATURE_HMAC_SHA512,
+                      client_secret=password)
+
+
+# ================================================================
 
 class OAuth1PlaintextPlugin(AuthPlugin):
+    """
+    Plugin for PLAINTEXT.
+    """
 
     # This plugin is activated if this value is the argument to `--auth-type`
     auth_type = 'oauth1-plaintext'
