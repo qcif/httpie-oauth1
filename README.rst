@@ -21,12 +21,6 @@ SHA-1 with more secure hashing algorithms:
   - RSA-SHA256
   - RSA-SHA512
 
-Note: if only HMAC-SHA1 is required, there is another plugin called
-`httpie-oauth <https://github.com/httpie/httpie-oauth>`_ that can be used
-(note: "oauth" not "oauth1"). It is older and unmaintained. But it may be
-simpler to install, since it does not require cryptographic support for RSA
-public-keys.
-
 Installation
 ------------
 
@@ -34,45 +28,44 @@ Standard install
 ................
 
 A standard install has all the HMAC-based and PLAINTEXT signature methods, but
-does not have the RSA-based signature methods.
+does not have any of the RSA-based signature methods.
 
 .. code-block:: bash
 
     $ pip install httpie-oauth1
 
+Since *httpie-oauth1* depends on *httpie*, *httpie* is also installed if
+it has not already been installed.
+
 With extras for RSA
 ...................
 
-To support features that use RSA public-key cryptography, PyCA's
-`cryptography`_ package and the `PyJWT`_ package must also be
-installed. This can be done by installing the core features of
-httpie-oauth1 along with the "rsa" extras.
+To include the RSA-based signature methods, install it with the "rsa" extras:
 
 .. code-block:: bash
 
     $ pip install 'httpie-oauth1[rsa]'
 
+That installs the standard install, plus the additional Python packages needed
+to support the RSA cryptographic algorithms.
+
 Note: the quotes may be required, since shells can interpret the
 square brackets as special characters.
-
-Alternatively, those two Python packages can be installed manually by
-running ``pip install cryptography`` and ``pip install pyjwt``, either
-before or after installing the standard installation of httpie-oauth1.
-PyJWT depends on cryptography, so just installing *pyjwt* should
-automatically also install *cryptography*. But *cryptography* has
-dependencies that can cause its installation to fail, so it can be
-better to get it installed before installing PyJWT.
 
 Checking the install
 ....................
 
 Run ``http --help`` and under the "Authentication" section it should
-list several OAuth 1.0a authentication mechanisms for the
-``--auth-type`` option: for example, ``oauth1-hmac-sha1``,
-``oauth1-rsa-sha1`` and ``oauth1-plaintext``.
+list the OAuth 1.0a authentication mechanisms from the plugin for the
+``--auth-type`` option:
 
-Since *httpie-oauth1* depends on *httpie*, *httpie* is also installed if
-it has not already been installed.
+- ``oauth1-hmac-sha1``
+- ``oauth-hmac-sha256``
+- ``oauth-hmac-sha512``
+- ``oauth1-rsa-sha1``
+- ``oauth-rsa-sha256``
+- ``oauth-rsa-sha512``
+- ``oauth1-plaintext``
 
 
 Usage
