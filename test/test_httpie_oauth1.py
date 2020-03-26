@@ -8,15 +8,15 @@ import unittest
 import httpie_oauth1
 
 
-# ================================================================
+# ################################################################
 
 class TestOAuth1(unittest.TestCase):
 
-    show_oauth_parameters = False  # set to True to print the parameters
+    show_oauth_parameters = False  # set to True to print out the parameters
 
-    _username = 'client_id_from_auth_argument'
+    _username = 'client_id_from_auth_argument'  # username from simulated --auth
 
-    # ----------------------------------------------------------------
+    # ================================================================
 
     def _apply_oauth1_plugin(self, auth):
         """
@@ -108,30 +108,7 @@ class TestOAuth1(unittest.TestCase):
 
         return oauth1_params
 
-    # ----------------------------------------------------------------
-
-    def test_plaintext(self):
-        plugin = httpie_oauth1.OAuth1PlaintextPlugin()
-
-        self.assertEqual(plugin.auth_type, 'oauth1-plaintext')
-        self.assertTrue(plugin.auth_require)
-        self.assertTrue(plugin.auth_parse)
-        self.assertTrue(plugin.prompt_password)
-
-        auth = plugin.get_auth(self._username, 'p@ssw0rd')
-
-        oauth_auth = self._apply_oauth1_plugin(auth)
-
-        self.assertEqual(oauth_auth['oauth_signature_method'], 'PLAINTEXT')
-        self.assertEqual(oauth_auth['oauth_consumer_key'], self._username)
-
-        # With PLAINTEXT, the signature is just the secret value (encoded)
-        # followed by an encoded ampersand ("%26") and the token key (which is
-        # empty in this case).
-
-        self.assertEqual(oauth_auth['oauth_signature'], 'p%2540ssw0rd%26')
-
-    # ----------------------------------------------------------------
+    # ================================================================
 
     def _hmac_common(self, plugin, expected_auth_type, signature_method):
         """
@@ -154,25 +131,19 @@ class TestOAuth1(unittest.TestCase):
         self.assertEqual(oauth_auth['oauth_signature_method'], signature_method)
         self.assertEqual(oauth_auth['oauth_consumer_key'], self._username)
 
-    # ----------------
-
     def test_hmac_sha1(self):
         plugin = httpie_oauth1.OAuth1HmacSha1Plugin()
         self._hmac_common(plugin, 'oauth1-hmac-sha1', 'HMAC-SHA1')
-
-    # ----------------
 
     def test_hmac_sha256(self):
         plugin = httpie_oauth1.OAuth1HmacSha256Plugin()
         self._hmac_common(plugin, 'oauth1-hmac-sha256', 'HMAC-SHA256')
 
-    # ----------------
-
     def test_hmac_sha512(self):
         plugin = httpie_oauth1.OAuth1HmacSha512Plugin()
         self._hmac_common(plugin, 'oauth1-hmac-sha512', 'HMAC-SHA512')
 
-    # ----------------------------------------------------------------
+    # ================================================================
 
     def _rsa_common(self, plugin, expected_auth_type, signature_method):
         """
@@ -228,26 +199,43 @@ class TestOAuth1(unittest.TestCase):
                              msg='run with --auth ' + auth_argument)
             self.assertEqual(oauth_auth['oauth_consumer_key'], self._username)
 
-    # ----------------
-
     def test_rsa_sha1(self):
         plugin = httpie_oauth1.OAuth1RsaSha1Plugin()
         self._rsa_common(plugin, 'oauth1-rsa-sha1', 'RSA-SHA1')
-
-    # ----------------
 
     def test_rsa_sha256(self):
         plugin = httpie_oauth1.OAuth1RsaSha256Plugin()
         self._rsa_common(plugin, 'oauth1-rsa-sha256', 'RSA-SHA256')
 
-# ----------------
-
     def test_rsa_sha512(self):
         plugin = httpie_oauth1.OAuth1RsaSha512Plugin()
         self._rsa_common(plugin, 'oauth1-rsa-sha512', 'RSA-SHA512')
 
+    # ================================================================
 
-# ================================================================
+    def test_plaintext(self):
+        plugin = httpie_oauth1.OAuth1PlaintextPlugin()
+
+        self.assertEqual(plugin.auth_type, 'oauth1-plaintext')
+        self.assertTrue(plugin.auth_require)
+        self.assertTrue(plugin.auth_parse)
+        self.assertTrue(plugin.prompt_password)
+
+        auth = plugin.get_auth(self._username, 'p@ssw0rd')
+
+        oauth_auth = self._apply_oauth1_plugin(auth)
+
+        self.assertEqual(oauth_auth['oauth_signature_method'], 'PLAINTEXT')
+        self.assertEqual(oauth_auth['oauth_consumer_key'], self._username)
+
+        # With PLAINTEXT, the signature is just the secret value (encoded)
+        # followed by an encoded ampersand ("%26") and the token key (which is
+        # empty in this case).
+
+        self.assertEqual(oauth_auth['oauth_signature'], 'p%2540ssw0rd%26')
+
+
+# ################################################################
 
 if __name__ == '__main__':
     unittest.main()

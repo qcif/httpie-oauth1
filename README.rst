@@ -30,9 +30,41 @@ public-keys.
 Installation
 ------------
 
+Standard install
+................
+
+A standard install has all the HMAC-based and PLAINTEXT signature methods, but
+does not have the RSA-based signature methods.
+
 .. code-block:: bash
 
     $ pip install httpie-oauth1
+
+With extras for RSA
+...................
+
+To support features that use RSA public-key cryptography, PyCA's
+`cryptography`_ package and the `PyJWT`_ package must also be
+installed. This can be done by installing the core features of
+httpie-oauth1 along with the "rsa" extras.
+
+.. code-block:: bash
+
+    $ pip install 'httpie-oauth1[rsa]'
+
+Note: the quotes may be required, since shells can interpret the
+square brackets as special characters.
+
+Alternatively, those two Python packages can be installed manually by
+running ``pip install cryptography`` and ``pip install pyjwt``, either
+before or after installing the standard installation of httpie-oauth1.
+PyJWT depends on cryptography, so just installing *pyjwt* should
+automatically also install *cryptography*. But *cryptography* has
+dependencies that can cause its installation to fail, so it can be
+better to get it installed before installing PyJWT.
+
+Checking the install
+....................
 
 Run ``http --help`` and under the "Authentication" section it should
 list several OAuth 1.0a authentication mechanisms for the
@@ -41,6 +73,7 @@ list several OAuth 1.0a authentication mechanisms for the
 
 Since *httpie-oauth1* depends on *httpie*, *httpie* is also installed if
 it has not already been installed.
+
 
 Usage
 -----
@@ -150,14 +183,46 @@ You can also use `HTTPie sessions <https://httpie.org/doc#sessions>`_:
 
 
 Troubleshooting
-...............
+---------------
 
 ModuleNotFoundError: No module named 'jwt'
-++++
+..........................................
 
 The `PyJWT <https://github.com/jpadilla/pyjwt>`_ module is not installed.
 
-AttributeError: module 'jwt.algorithms' has no attribute 'RSAAlgorithm'
-++++
+This httpie-oauth1 package depends on oauthlib, which has pyjwt (and
+cryptography) as optional extra dependencies. They are optional,
+because they are not needed for HMAC-based signatures. But they are
+needed for RSA-based signatures. The Python installers are not very
+reliable when it comes to extra dependendencies, so you may need to
+manually install pyjwt if the installer did not install it.
 
-The PyCA's `cryptography <https://cryptography.io/>`_ module is not installed.
+Note: the package to install is called "pyjwt" not "jwt". They both
+contain a module called "jwt".
+
+.. code-block:: bash
+
+    $ pip install pyjwt
+
+ModuleNotFoundError: No module named 'jwt.algorithms'
+.....................................................
+
+The "jwt" package was installed instead of the "pyjwt" package.
+
+Install the correct package:
+
+.. code-block:: bash
+
+    $ pip uninstall jwt  # optional
+    $ pip install pyjwt
+
+AttributeError: module 'jwt.algorithms' has no attribute 'RSAAlgorithm'
+.......................................................................
+
+PyCA's `cryptography <https://cryptography.io/>`_ module is not installed.
+
+See comment in the error about a missing "jwt" module.
+
+.. code-block:: bash
+
+    $ pip install cryptography

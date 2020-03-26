@@ -40,7 +40,7 @@ __author__ = 'Hoylen Sue'
 __licence__ = 'BSD'
 
 
-# ================================================================
+# ################################################################
 
 class _OAuth1RsaPluginBase(AuthPlugin, ABC):
     """
@@ -58,7 +58,35 @@ class _OAuth1RsaPluginBase(AuthPlugin, ABC):
     by a colon, followed by the value of the client ID.
     """
 
-    description = '--auth [clientId:]privateKeyFile'
+    # ----------------
+    # Description of --auth option used by HTTPie in its help message
+    #
+    # Detect if RSA support is available or not. While the plug-in cannot
+    # suppress the value from appearing in the list of auth-type arguments,
+    # it can change its description when RSA is not available.
+    #
+    # This test relies on the dependencies: httpie_oauth1 uses oauthlib, and
+    # oauthlib needs PyJWT and cryptography to perform RSA signing (but those
+    # two Python packages are not installed by default). Should those the
+    # package dependencies change, this code will need to be updated.
+
+    try:
+        import jwt.algorithms
+        _pyJwt_installed = True
+    except ModuleNotFoundError:
+        _pyJwt_installed = False
+
+    try:
+        import cryptography.hazmat.primitives.asymmetric.rsa
+        _cryptography_installed = True
+    except ModuleNotFoundError:
+        _cryptography_installed = False
+
+    description = '--auth [clientId:]privateKeyFile' \
+        if _pyJwt_installed and _cryptography_installed else \
+        '[not available: packages to support RSA have not been installed]'
+
+    # ----------------
 
     # This plugin requires credentials to be specified with `--auth`
     auth_require = True
@@ -69,7 +97,7 @@ class _OAuth1RsaPluginBase(AuthPlugin, ABC):
     # This plugin does not prompt for a password
     prompt_password = False
 
-    # ----------------------------------------------------------------
+    # ================================================================
 
     def get_key_and_client_id(self):
         """
@@ -139,8 +167,6 @@ class _OAuth1RsaPluginBase(AuthPlugin, ABC):
 
         return private_key, client_id
 
-    # ----------------
-
     @staticmethod
     def _load_file(filename):
         """
@@ -209,8 +235,6 @@ class _OAuth1RsaPluginBase(AuthPlugin, ABC):
             sys.stderr.write("http: error: RSA private key file: " + str(e))
             sys.exit(1)
 
-    # ----------------
-
     @staticmethod
     def _extract_attribute(data, desired_attribute):
         """
@@ -244,7 +268,7 @@ class _OAuth1RsaPluginBase(AuthPlugin, ABC):
         return None  # not found
 
 
-# ================================================================
+# ################################################################
 
 class OAuth1RsaSha1Plugin(_OAuth1RsaPluginBase):
     """
@@ -256,7 +280,7 @@ class OAuth1RsaSha1Plugin(_OAuth1RsaPluginBase):
 
     name = 'OAuth 1.0a RSA-SHA1'
 
-    # ----------------------------------------------------------------
+    # ================================================================
 
     def get_auth(self, username=None, password=None):
         """
@@ -276,7 +300,7 @@ class OAuth1RsaSha1Plugin(_OAuth1RsaPluginBase):
                       rsa_key=private_key)
 
 
-# ================================================================
+# ################################################################
 
 class OAuth1RsaSha256Plugin(_OAuth1RsaPluginBase):
     """
@@ -288,7 +312,7 @@ class OAuth1RsaSha256Plugin(_OAuth1RsaPluginBase):
 
     name = 'OAuth 1.0a RSA-SHA256'
 
-    # ----------------------------------------------------------------
+    # ================================================================
 
     def get_auth(self, username=None, password=None):
         """
@@ -309,7 +333,7 @@ class OAuth1RsaSha256Plugin(_OAuth1RsaPluginBase):
                       rsa_key=private_key)
 
 
-# ================================================================
+# ################################################################
 
 class OAuth1RsaSha512Plugin(_OAuth1RsaPluginBase):
     """
@@ -321,7 +345,7 @@ class OAuth1RsaSha512Plugin(_OAuth1RsaPluginBase):
 
     name = 'OAuth 1.0a RSA-SHA512'
 
-    # ----------------------------------------------------------------
+    # ================================================================
 
     def get_auth(self, username=None, password=None):
         """
@@ -342,7 +366,7 @@ class OAuth1RsaSha512Plugin(_OAuth1RsaPluginBase):
                       rsa_key=private_key)
 
 
-# ================================================================
+# ################################################################
 
 class OAuth1HmacSha1Plugin(AuthPlugin):
     """
@@ -365,7 +389,7 @@ class OAuth1HmacSha1Plugin(AuthPlugin):
     # This plugin can prompt for a password
     prompt_password = True
 
-    # ----------------------------------------------------------------
+    # ================================================================
 
     def get_auth(self, username=None, password=None):
         """
@@ -381,7 +405,7 @@ class OAuth1HmacSha1Plugin(AuthPlugin):
                       client_secret=password)
 
 
-# ================================================================
+# ################################################################
 
 class OAuth1HmacSha256Plugin(AuthPlugin):
     """
@@ -404,7 +428,7 @@ class OAuth1HmacSha256Plugin(AuthPlugin):
     # This plugin can prompt for a password
     prompt_password = True
 
-    # ----------------------------------------------------------------
+    # ================================================================
 
     def get_auth(self, username=None, password=None):
         """
@@ -420,7 +444,7 @@ class OAuth1HmacSha256Plugin(AuthPlugin):
                       client_secret=password)
 
 
-# ================================================================
+# ################################################################
 
 class OAuth1HmacSha512Plugin(AuthPlugin):
     """
@@ -443,7 +467,7 @@ class OAuth1HmacSha512Plugin(AuthPlugin):
     # This plugin can prompt for a password
     prompt_password = True
 
-    # ----------------------------------------------------------------
+    # ================================================================
 
     def get_auth(self, username=None, password=None):
         """
@@ -459,7 +483,7 @@ class OAuth1HmacSha512Plugin(AuthPlugin):
                       client_secret=password)
 
 
-# ================================================================
+# ################################################################
 
 class OAuth1PlaintextPlugin(AuthPlugin):
     """
@@ -482,7 +506,7 @@ class OAuth1PlaintextPlugin(AuthPlugin):
     # This plugin can prompt for a password
     prompt_password = True
 
-    # ----------------------------------------------------------------
+    # ================================================================
 
     def get_auth(self, username=None, password=None):
         """

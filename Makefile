@@ -39,10 +39,13 @@ help:
 	@echo "Targets:"
 	@echo "  venv-create        - create virtual environment"
 	@echo "  venv-delete        - delete virtual environment"
+	@echo "  venv-reset         - delete and create a new dev-rsa + local-deps venv"
 	@echo
 	@echo "  install-dev        - install as a link (in venv)"
+	@echo "  install-dev-rsa    - install as a link (in venv) with RSA support"
 	@echo "  install-local-deps - install dependencies as links (in venv)"
 	@echo "  install-normal     - install a copy (in current environment)"
+	@echo "  install-normal-rsa - install a copy (in current environment) with RSA support"
 	@echo
 	@echo "  test               - run unit tests"
 	@echo
@@ -68,7 +71,7 @@ venv-delete:
 
 # Delete any current venv and recreate it.
 
-venv-reset: venv-delete venv-create install-dev install-local-deps
+venv-reset: venv-delete venv-create install-dev-rsa install-local-deps
 
 #----------------------------------------------------------------
 
@@ -77,6 +80,16 @@ install-dev:
 	  . venv/bin/activate && \
 	  echo "create-venv: installing this package development" && \
           pip install --editable . ; \
+	else \
+	  echo "create-venv: venv does not exist"; \
+	  exit 1 ; \
+	fi
+
+install-dev-rsa:
+	@if [ -e venv ]; then \
+	  . venv/bin/activate && \
+	  echo "create-venv: installing this package development" && \
+          pip install --editable '.[rsa]' ; \
 	else \
 	  echo "create-venv: venv does not exist"; \
 	  exit 1 ; \
@@ -103,6 +116,9 @@ install-local-deps:
 
 install-normal:
 	pip install .
+
+install-normal-rsa:
+	pip install '.[rsa]'
 
 #----------------------------------------------------------------
 

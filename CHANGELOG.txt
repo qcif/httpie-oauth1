@@ -3,3 +3,7 @@
 ## 1.1.0
 
 - Added support for HMAC-512, RSA-256 and RSA-512 signature methods.
+
+## 1.0.0
+
+- Initial release.
