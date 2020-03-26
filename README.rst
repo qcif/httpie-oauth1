@@ -30,8 +30,7 @@ the extras for RSA:**
 
 .. code-block:: bash
 
-    $ pip install 'git+https://github.com/qcif/httpie-oauth1[rsa]'
-
+    $ pip install 'git+https://github.com/qcif/httpie-oauth1#egg=httpie-oauth1[rsa]'
 
 Standard install
 ................
