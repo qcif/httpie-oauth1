@@ -24,6 +24,15 @@ SHA-1 with more secure hashing algorithms:
 Installation
 ------------
 
+**Important: until this package is published on PyPI, it has to be
+installed from its GitHub repository. For example, to install it with
+the extras for RSA:**
+
+.. code-block:: bash
+
+    $ pip install 'git+https://github.com/qcif/httpie-oauth1[rsa]'
+
+
 Standard install
 ................
 
@@ -46,11 +55,15 @@ To include the RSA-based signature methods, install it with the "rsa" extras:
 
     $ pip install 'httpie-oauth1[rsa]'
 
-That installs the standard install, plus the additional Python packages needed
-to support the RSA cryptographic algorithms.
+That installs the standard install, plus the additional Python
+packages needed to support the RSA cryptographic algorithms: PyCA's
+*cryptography* package and the *PyJWT* package. If the RSA-based
+signature methods are not needed it may be easier to use the standard
+install, since there can be problems installing the cryptography
+package on some systems.
 
-Note: the quotes may be required, since shells can interpret the
-square brackets as special characters.
+Note: the quotes are necessary in some shells, because square brackets
+are special characters.
 
 Checking the install
 ....................
@@ -159,20 +172,6 @@ for the ``--auth-type``:
 - ``oauth-hmac-sha512``
 - ``oauth-rsa-sha256``
 - ``oauth-rsa-sha512``
-
-HTTPie Sessions
-...............
-
-You can also use `HTTPie sessions <https://httpie.org/doc#sessions>`_:
-
-.. code-block:: bash
-
-    # Create session
-    $ http --session=logged-in --auth-type=oauth1-rsa-sha1 \
-           --auth='clientID:myRSAkey.pvt' https://example.org
-
-    # Re-use auth
-    $ http --session=logged-in POST https://example.org hello=world
 
 
 Troubleshooting
