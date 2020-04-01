@@ -91,10 +91,18 @@ is a string value that identifies the client: like a username does.
 HMAC-SHA1
 .........
 
-To use the HMAC-SHA1 signature method, for the ``--auth-type`` argument use
-``oauth1-hmac-sha1``, and for the ``--auth`` argument provide the client
-identifier optionally followed by a colon and the secret. If the secret is not
-provided, the program will prompt for it.
+To use the HMAC-SHA1 signature method, for the ``--auth-type``
+argument use ``oauth1-hmac-sha1``, and for the ``--auth`` argument
+provide the client identifier optionally followed by a colon and the
+secrets. If the secrets is not provided, the program will prompt for
+it.
+
+The secrets is used as the *client secret*, if there is no colon in
+it. Otherwise, the *client secret* is the substring before the first
+colon, and the *resource owner secret* is the substring after the
+first colon. A secrets value that ends in a colon (or has no colon)
+does not have a *resource owner secret*. A secrets value that starts
+with a colon does not have a *client secret*.
 
 .. code-block:: bash
 
@@ -149,10 +157,14 @@ It can be used with this command:
 PLAINTEXT
 .........
 
-To use the PLAINTEXT signature method, for the ``--auth-type`` argument
-use ``oauth1-plaintext``, and for the ``--auth`` argument provide the client
-identifier, optionally followed by a colon and the secret. If the secret is not
-provided, the program will prompt for it.
+To use the PLAINTEXT signature method, for the ``--auth-type``
+argument use ``oauth1-plaintext``, and for the ``--auth`` argument
+provide the client identifier, optionally followed by a colon and the
+secrets. If the secrets is not provided, the program will prompt for
+it.
+
+The secrets is used for the *client secret* and/or *resource owner
+secret* in the same manner as for HMAC-SHA1.
 
 .. code-block:: bash
 
@@ -172,6 +184,11 @@ for the ``--auth-type``:
 - ``oauth-rsa-sha256``
 - ``oauth-rsa-sha512``
 
+Resource owner secrets
+......................
+
+For the HMAC-based and PLAINTEXT signature methods, a *resource owner secret*
+can also be provided.
 
 Troubleshooting
 ---------------

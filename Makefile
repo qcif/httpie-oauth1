@@ -55,19 +55,23 @@ help:
 
 #----------------------------------------------------------------
 
+VENV=venv
+
 venv-create:
-	@if [ ! -e venv ]; then \
-	  echo "create-venv: creating venv" && \
-	  python3 -m venv venv && \
-	  echo "create-venv: upgrading pip" && \
+	@if [ ! -e "${VENV}" ]; then \
+	  echo "venv-create: creating ${VENV}" && \
+	  python3 -m venv "${VENV}" && \
+	  echo "venv-create: upgrading pip and setuptools" && \
+	  . ${VENV}/bin/activate && \
 	  pip install --upgrade pip && \
-	  echo "create-venv: activate by sourcing 'venv/bin/activate'" ; \
+	  pip install --upgrade setuptools && \
+	  echo "venv-create: activate by sourcing '${VENV}/bin/activate'" ; \
 	else \
-	  echo "create-venv: venv already exists"; \
+	  echo "venv-create: already exists: ${VENV}"; \
 	fi
 
 venv-delete:
-	@rm -rf venv
+	@rm -rf "${VENV}"
 
 # Delete any current venv and recreate it.
 
@@ -78,20 +82,20 @@ venv-reset: venv-delete venv-create install-dev-rsa install-local-deps
 install-dev:
 	@if [ -e venv ]; then \
 	  . venv/bin/activate && \
-	  echo "create-venv: installing this package development" && \
+	  echo "install-dev: installing this package development" && \
           pip install --editable . ; \
 	else \
-	  echo "create-venv: venv does not exist"; \
+	  echo "install-dev: venv does not exist"; \
 	  exit 1 ; \
 	fi
 
 install-dev-rsa:
 	@if [ -e venv ]; then \
 	  . venv/bin/activate && \
-	  echo "create-venv: installing this package development" && \
+	  echo "install-dev-rsa: installing this package development" && \
           pip install --editable '.[rsa]' ; \
 	else \
-	  echo "create-venv: venv does not exist"; \
+	  echo "install-dev-rsa: venv does not exist"; \
 	  exit 1 ; \
 	fi
 
@@ -110,7 +114,7 @@ install-local-deps:
 	    fi \
 	  done \
 	else \
-	  echo "create-venv: venv does not exist"; \
+	  echo "install-local-deps: venv does not exist"; \
 	  exit 1 ; \
 	fi
 

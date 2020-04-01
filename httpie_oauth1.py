@@ -82,9 +82,9 @@ class _OAuth1RsaPluginBase(AuthPlugin, ABC):
     except ModuleNotFoundError:
         _cryptography_installed = False
 
-    description = '--auth [clientId:]privateKeyFile' \
+    description = '--auth [CLIENT_ID:]PRIVATE_KEY_FILE' \
         if _pyJwt_installed and _cryptography_installed else \
-        '[not available: packages to support RSA have not been installed]'
+        '[not available: RSA packages not installed]'
 
     # ----------------
 
@@ -99,7 +99,18 @@ class _OAuth1RsaPluginBase(AuthPlugin, ABC):
 
     # ================================================================
 
-    def get_key_and_client_id(self):
+    def the_auth(self, signature_method: str):
+
+        private_key, client_id = self._get_key_and_client_id()
+
+        # Create a requests_oauthlib ``OAuth1`` with requested signature method
+        # and credentials.
+
+        return OAuth1(signature_method=signature_method,
+                      client_key=client_id,
+                      rsa_key=private_key)
+
+    def _get_key_and_client_id(self):
         """
         Obtains the authentication parameters: RSA private key and client ID.
 
@@ -293,11 +304,7 @@ class OAuth1RsaSha1Plugin(_OAuth1RsaPluginBase):
         :return: requests_oauthlib.oauth1_auth.OAuth1 object
         """
 
-        private_key, client_id = self.get_key_and_client_id()
-
-        return OAuth1(client_key=client_id,
-                      signature_method=SIGNATURE_RSA_SHA1,
-                      rsa_key=private_key)
+        return self.the_auth(SIGNATURE_RSA_SHA1)
 
 
 # ################################################################
@@ -326,11 +333,7 @@ class OAuth1RsaSha256Plugin(_OAuth1RsaPluginBase):
         :return: requests_oauthlib.oauth1_auth.OAuth1 object
         """
 
-        private_key, client_id = self.get_key_and_client_id()
-
-        return OAuth1(client_key=client_id,
-                      signature_method=SIGNATURE_RSA_SHA256,
-                      rsa_key=private_key)
+        return self.the_auth(SIGNATURE_RSA_SHA256)
 
 
 # ################################################################
@@ -359,26 +362,17 @@ class OAuth1RsaSha512Plugin(_OAuth1RsaPluginBase):
         :return: requests_oauthlib.oauth1_auth.OAuth1 object
         """
 
-        private_key, client_id = self.get_key_and_client_id()
-
-        return OAuth1(client_key=client_id,
-                      signature_method=SIGNATURE_RSA_SHA512,
-                      rsa_key=private_key)
+        return self.the_auth(SIGNATURE_RSA_SHA512)
 
 
 # ################################################################
 
-class OAuth1HmacSha1Plugin(AuthPlugin):
+class _OAuth1HmacPluginBase(AuthPlugin, ABC):
     """
-    Plugin for HMAC-SHA1.
+    Base class for HMAC-based plugins.
     """
 
-    # This plugin is activated if this value is the argument to `--auth-type`
-    auth_type = 'oauth1-hmac-sha1'
-
-    name = 'OAuth 1.0a HMAC-SHA1'
-
-    description = '--auth clientId[:clientSecret]'
+    description = '--auth CLIENT_ID[:CLIENT_SECRET[:RESOURCE_OWNER_SECRET]]'
 
     # This plugin requires credentials to be specified with `--auth`
     auth_require = True
@@ -388,6 +382,47 @@ class OAuth1HmacSha1Plugin(AuthPlugin):
 
     # This plugin can prompt for a password
     prompt_password = True
+
+    # ================================================================
+
+    @staticmethod
+    def the_auth(client_id: str,
+                 secrets: str,
+                 signature_method: str):
+        """
+        The secrets is used as the client secret, if it does not contain any
+        colons. If it contains one or more colons, the substring before the
+        first colon is used as the client secret and the part after the first
+        colon is used as the resource owner secret (also called the "token
+        shared-secret" in OAuth1 terminology). A value with no colons, or ends
+        with a colon means there is no resource owner secret. A value that
+        starts with a colon means there is no client secret.
+
+        :param client_id: used as the client ID
+        :param secrets: client secret and/or resource owner secret
+        :param signature_method: the HMAC-based signature method to use
+        :return:
+        """
+
+        client_secret, resource_owner_secret = _split_secrets(secrets)
+
+        return OAuth1(signature_method=signature_method,
+                      client_key=client_id,
+                      client_secret=client_secret,
+                      resource_owner_secret=resource_owner_secret)
+
+
+# ################################################################
+
+class OAuth1HmacSha1Plugin(_OAuth1HmacPluginBase):
+    """
+    Plugin for HMAC-SHA1.
+    """
+
+    # This plugin is activated if this value is the argument to `--auth-type`
+    auth_type = 'oauth1-hmac-sha1'
+
+    name = 'OAuth 1.0a HMAC-SHA1'
 
     # ================================================================
 
@@ -400,14 +435,12 @@ class OAuth1HmacSha1Plugin(AuthPlugin):
         :return: requests_oauthlib.oauth1_auth.OAuth1 object
         """
 
-        return OAuth1(client_key=username,
-                      signature_method=SIGNATURE_HMAC_SHA1,
-                      client_secret=password)
+        return self.the_auth(username, password, SIGNATURE_HMAC_SHA1)
 
 
 # ################################################################
 
-class OAuth1HmacSha256Plugin(AuthPlugin):
+class OAuth1HmacSha256Plugin(_OAuth1HmacPluginBase):
     """
     Plugin for HMAC-SHA256.
     """
@@ -416,17 +449,6 @@ class OAuth1HmacSha256Plugin(AuthPlugin):
     auth_type = 'oauth1-hmac-sha256'
 
     name = 'OAuth 1.0a HMAC-SHA256'
-
-    description = '--auth clientId[:clientSecret]'
-
-    # This plugin requires credentials to be specified with `--auth`
-    auth_require = True
-
-    # This plugin wants the argument to `--auth` to be parsed by HTTPie
-    auth_parse = True
-
-    # This plugin can prompt for a password
-    prompt_password = True
 
     # ================================================================
 
@@ -439,14 +461,12 @@ class OAuth1HmacSha256Plugin(AuthPlugin):
         :return: requests_oauthlib.oauth1_auth.OAuth1 object
         """
 
-        return OAuth1(client_key=username,
-                      signature_method=SIGNATURE_HMAC_SHA256,
-                      client_secret=password)
+        return self.the_auth(username, password, SIGNATURE_HMAC_SHA256)
 
 
 # ################################################################
 
-class OAuth1HmacSha512Plugin(AuthPlugin):
+class OAuth1HmacSha512Plugin(_OAuth1HmacPluginBase):
     """
     Plugin for HMAC-SHA512.
     """
@@ -455,17 +475,6 @@ class OAuth1HmacSha512Plugin(AuthPlugin):
     auth_type = 'oauth1-hmac-sha512'
 
     name = 'OAuth 1.0a HMAC-SHA512'
-
-    description = '--auth clientId[:clientSecret]'
-
-    # This plugin requires credentials to be specified with `--auth`
-    auth_require = True
-
-    # This plugin wants the argument to `--auth` to be parsed by HTTPie
-    auth_parse = True
-
-    # This plugin can prompt for a password
-    prompt_password = True
 
     # ================================================================
 
@@ -478,9 +487,7 @@ class OAuth1HmacSha512Plugin(AuthPlugin):
         :return: requests_oauthlib.oauth1_auth.OAuth1 object
         """
 
-        return OAuth1(client_key=username,
-                      signature_method=SIGNATURE_HMAC_SHA512,
-                      client_secret=password)
+        return self.the_auth(username, password, SIGNATURE_HMAC_SHA512)
 
 
 # ################################################################
@@ -495,7 +502,7 @@ class OAuth1PlaintextPlugin(AuthPlugin):
 
     name = 'OAuth 1.0a PLAINTEXT'
 
-    description = '--auth clientId[:clientSecret]'
+    description = '--auth CLIENT_ID[:CLIENT_SECRET[:RESOURCE_OWNER_SECRET]]'
 
     # This plugin requires credentials to be specified with `--auth`
     auth_require = True
@@ -517,6 +524,37 @@ class OAuth1PlaintextPlugin(AuthPlugin):
         :return: requests_oauthlib.oauth1_auth.OAuth1 object
         """
 
-        return OAuth1(client_key=username,
-                      signature_method=SIGNATURE_PLAINTEXT,
-                      client_secret=password)
+        client_secret, resource_owner_secret = _split_secrets(password)
+
+        return OAuth1(signature_method=SIGNATURE_PLAINTEXT,
+                      client_key=username,
+                      client_secret=client_secret,
+                      resource_owner_secret=resource_owner_secret)
+
+
+# ################################################################
+
+def _split_secrets(secrets: str):
+    """
+    Extract the client secret and/or resource owner secret.
+
+    The secrets is used as the client secret, if it does not contain any
+    colons. If it contains one or more colons, the substring before the
+    first colon is used as the client secret and the part after the first
+    colon is used as the resource owner secret (also called the "token
+    shared-secret" in OAuth1 terminology). A value with no colons, or ends
+    with a colon means there is no resource owner secret. A value that
+    starts with a colon means there is no client secret.
+
+    :param secrets: combine string with values separated by a colon
+    :return: tuple with client secret and resource owner secret
+    """
+    first_colon_pos = secrets.find(':')
+    if first_colon_pos != -1:
+        client_secret = secrets[:first_colon_pos]
+        resource_owner_secret = secrets[first_colon_pos + 1:]
+    else:
+        client_secret = secrets
+        resource_owner_secret = None
+
+    return client_secret, resource_owner_secret

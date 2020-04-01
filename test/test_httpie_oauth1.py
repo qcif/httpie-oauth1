@@ -124,12 +124,21 @@ class TestOAuth1(unittest.TestCase):
         self.assertTrue(plugin.auth_parse)
         self.assertTrue(plugin.prompt_password)
 
-        auth = plugin.get_auth(self._username, 's3cr3t')
+        client_secret = 's3cr3t'
+        resource_owner_secret = 'p@ssw0rd'
 
-        oauth_auth = self._apply_oauth1_plugin(auth)
+        for secrets_pair in [client_secret,
+                             client_secret + ':',
+                             client_secret + ':' + resource_owner_secret,
+                             ':' + resource_owner_secret]:
+            auth = plugin.get_auth(self._username, secrets_pair)
 
-        self.assertEqual(oauth_auth['oauth_signature_method'], signature_method)
-        self.assertEqual(oauth_auth['oauth_consumer_key'], self._username)
+            oauth_auth = self._apply_oauth1_plugin(auth)
+
+            self.assertEqual(oauth_auth['oauth_signature_method'],
+                             signature_method)
+            self.assertEqual(oauth_auth['oauth_consumer_key'],
+                             self._username)
 
     def test_hmac_sha1(self):
         plugin = httpie_oauth1.OAuth1HmacSha1Plugin()
@@ -221,18 +230,32 @@ class TestOAuth1(unittest.TestCase):
         self.assertTrue(plugin.auth_parse)
         self.assertTrue(plugin.prompt_password)
 
-        auth = plugin.get_auth(self._username, 'p@ssw0rd')
+        client_secret = 'p@ssw0rd'
+        resource_owner_secret = 's3cr3t'
 
-        oauth_auth = self._apply_oauth1_plugin(auth)
+        # Secrets -> oauth_signature value
+        values = {
+            client_secret: 'p%2540ssw0rd%26',
+            client_secret + ':': 'p%2540ssw0rd%26',
+            client_secret + ':' + resource_owner_secret:
+                'p%2540ssw0rd%26s3cr3t',
+            ':' + resource_owner_secret: '%26s3cr3t'
+        }
+        for secrets_pair in values.keys():
 
-        self.assertEqual(oauth_auth['oauth_signature_method'], 'PLAINTEXT')
-        self.assertEqual(oauth_auth['oauth_consumer_key'], self._username)
+            auth = plugin.get_auth(self._username, secrets_pair)
 
-        # With PLAINTEXT, the signature is just the secret value (encoded)
-        # followed by an encoded ampersand ("%26") and the token key (which is
-        # empty in this case).
+            oauth_auth = self._apply_oauth1_plugin(auth)
 
-        self.assertEqual(oauth_auth['oauth_signature'], 'p%2540ssw0rd%26')
+            self.assertEqual(oauth_auth['oauth_signature_method'], 'PLAINTEXT')
+            self.assertEqual(oauth_auth['oauth_consumer_key'], self._username)
+
+            # With PLAINTEXT, the signature is just the secret value (encoded)
+            # followed by an encoded ampersand ("%26") and the token key.
+
+            expected_sig = values[secrets_pair]
+
+            self.assertEqual(oauth_auth['oauth_signature'], expected_sig)
 
 
 # ################################################################
