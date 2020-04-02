@@ -360,35 +360,41 @@ class _OAuth1SecretsBase(AuthPlugin, ABC):
         if len(components) == 1:
             # identities
             ids_component = components[0]
-            secrets = None
+            secrets = None  # prompt for secrets: always
             callback = None
             sig_type = _default_type
         elif len(components) == 2:
             # identities:secrets
             ids_component = components[0]
-            secrets = components[1]
+            secrets = components[1]  # prompt for secrets: if empty string
             callback = None
             sig_type = _default_type
         else:
             # identities:secrets:callback or identities:secrets:callback:type
+            # The callback can contain zero or more colons.
+
             ids_component = components[0]
-            secrets = components[1]
+            secrets = components[1]  # prompt for secrets: if empty string
 
-            end_of_callback = len(components) - 1
-
-            last_component = components[-1]
-            if last_component == '':
-                sig_type = _default_type
-            elif last_component == 'header':
-                sig_type = SIGNATURE_TYPE_AUTH_HEADER
-            elif last_component == 'query':
-                sig_type = SIGNATURE_TYPE_QUERY
-            elif last_component == 'body':
-                sig_type = SIGNATURE_TYPE_BODY
+            if len(components) == 3:
+                # No transmission type component
+                end_of_callback = len(components)
             else:
-                # Last component is not a type value: include it in the callback
-                end_of_callback = end_of_callback + 1
-                sig_type = _default_type
+                # Last component is either transmission type or part of callback
+
+                end_of_callback = len(components) - 1  # exclude last component?
+
+                last_component = components[-1]
+                if last_component == 'header':
+                    sig_type = SIGNATURE_TYPE_AUTH_HEADER
+                elif last_component == 'query':
+                    sig_type = SIGNATURE_TYPE_QUERY
+                elif last_component == 'body':
+                    sig_type = SIGNATURE_TYPE_BODY
+                else:
+                    # Last component is not known value: it is part of callback
+                    end_of_callback = len(components)  # keep last component
+                    sig_type = _default_type
 
             callback = ':'.join(components[2:end_of_callback])
 

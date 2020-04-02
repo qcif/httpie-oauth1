@@ -14,11 +14,14 @@ class TestOAuth1(unittest.TestCase):
 
     show_oauth_parameters = False  # set to True to print out the parameters
 
-    _username = 'client_id_from_auth_argument'  # username from simulated --auth
+    _clientId = 'client_id_from_auth_argument'
+    _rsrc_owner_id = 'rsrc_owner_id'
 
     # ================================================================
 
-    def _apply_oauth1_plugin(self, auth):
+    def _apply_oauth1_plugin(self,
+                             auth,
+                             skip_checks=False):
         """
         Tests an OAuth 1.0a plugin.
 
@@ -33,8 +36,8 @@ class TestOAuth1(unittest.TestCase):
         # Create a prepared request
 
         req = requests.PreparedRequest()
-        req.prepare_method('GET')
-        req.prepare_url('http://example.com', {
+        req.prepare_method('POST')
+        req.prepare_url('http://example.com/path', {
             'a': 'b'
         })
         req.prepare_headers({'foo': 'bar'})
@@ -46,10 +49,14 @@ class TestOAuth1(unittest.TestCase):
 
         # Common checks on request
 
-        self.assertEqual(req.method, 'GET')
-        self.assertEqual(req.path_url, '/?a=b')
+        self.assertEqual(req.method, 'POST')
+
+        if skip_checks:
+            return {}, req
+
+        self.assertEqual(req.path_url, '/path?a=b')
         self.assertIsNone(req.body)
-        self.assertEqual(len(req.headers), 2)
+        # self.assertEqual(len(req.headers), 2)
 
         # print('HTTP headers:')
         # for key in req.headers.keys():
@@ -106,7 +113,7 @@ class TestOAuth1(unittest.TestCase):
             print('OAuth request parameters:\n  ' +
                   '\n  '.join(map(lambda p: f'{p}', oauth1_params.items())))
 
-        return oauth1_params
+        return oauth1_params, req
 
     # ================================================================
 
@@ -121,24 +128,26 @@ class TestOAuth1(unittest.TestCase):
         """
         self.assertEqual(plugin.auth_type, expected_auth_type)
         self.assertTrue(plugin.auth_require)
-        self.assertTrue(plugin.auth_parse)
-        self.assertTrue(plugin.prompt_password)
+        self.assertFalse(plugin.auth_parse)
+        self.assertFalse(plugin.prompt_password)
 
         client_secret = 's3cr3t'
         resource_owner_secret = 'p@ssw0rd'
 
         for secrets_pair in [client_secret,
-                             client_secret + ':',
-                             client_secret + ':' + resource_owner_secret,
-                             ':' + resource_owner_secret]:
-            auth = plugin.get_auth(self._username, secrets_pair)
+                             client_secret + ';',
+                             client_secret + ';' + resource_owner_secret,
+                             ';' + resource_owner_secret]:
+            # Plugin uses the raw_auth instead of username and password
+            plugin.raw_auth = self._clientId + ':' + secrets_pair
+            auth = plugin.get_auth('username-ignored', 'password-ignored')
 
-            oauth_auth = self._apply_oauth1_plugin(auth)
+            oauth_auth, req = self._apply_oauth1_plugin(auth)
 
             self.assertEqual(oauth_auth['oauth_signature_method'],
                              signature_method)
             self.assertEqual(oauth_auth['oauth_consumer_key'],
-                             self._username)
+                             self._clientId)
 
     def test_hmac_sha1(self):
         plugin = httpie_oauth1.OAuth1HmacSha1Plugin()
@@ -182,11 +191,11 @@ class TestOAuth1(unittest.TestCase):
             _rsa_key_file,
             ':' + _rsa_key_file
         ]:
+            # Plugin uses the raw_auth instead of username and password
             plugin.raw_auth = auth_argument
             auth = plugin.get_auth('ignored-username', 'ignored-password')
-            # RSA uses the raw auth instead of username and password parameters
 
-            oauth_auth = self._apply_oauth1_plugin(auth)
+            oauth_auth, req = self._apply_oauth1_plugin(auth)
 
             self.assertEqual(oauth_auth['oauth_signature_method'],
                              signature_method,
@@ -197,16 +206,19 @@ class TestOAuth1(unittest.TestCase):
         # Client ID in `--auth` overrides any client ID inside private key file
 
         for auth_argument in [
-            self._username + ':' + _rsa_key_file_without_id,
-            self._username + ':' + _rsa_key_file
+            self._clientId + ':' + _rsa_key_file_without_id,
+            self._clientId + ':' + _rsa_key_file
         ]:
+            # Plugin uses the raw_auth instead of username and password
             plugin.raw_auth = auth_argument
             auth = plugin.get_auth('ignored-username', 'ignored-password')
-            oauth_auth = self._apply_oauth1_plugin(auth)
+
+            oauth_auth, req = self._apply_oauth1_plugin(auth)
+
             self.assertEqual(oauth_auth['oauth_signature_method'],
                              signature_method,
                              msg='run with --auth ' + auth_argument)
-            self.assertEqual(oauth_auth['oauth_consumer_key'], self._username)
+            self.assertEqual(oauth_auth['oauth_consumer_key'], self._clientId)
 
     def test_rsa_sha1(self):
         plugin = httpie_oauth1.OAuth1RsaSha1Plugin()
@@ -227,38 +239,137 @@ class TestOAuth1(unittest.TestCase):
 
         self.assertEqual(plugin.auth_type, 'oauth1-plaintext')
         self.assertTrue(plugin.auth_require)
-        self.assertTrue(plugin.auth_parse)
-        self.assertTrue(plugin.prompt_password)
+        self.assertFalse(plugin.auth_parse)
+        self.assertFalse(plugin.prompt_password)
 
         client_secret = 'p@ssw0rd'
         resource_owner_secret = 's3cr3t'
 
         # Secrets -> oauth_signature value
         values = {
-            client_secret: 'p%2540ssw0rd%26',
-            client_secret + ':': 'p%2540ssw0rd%26',
-            client_secret + ':' + resource_owner_secret:
-                'p%2540ssw0rd%26s3cr3t',
-            ':' + resource_owner_secret: '%26s3cr3t'
+            client_secret: 'p%2540ssw0rd%26',  # "clientSecret"
+            client_secret + ';': 'p%2540ssw0rd%26',  # "clientSecret;"
+            client_secret + ';' + resource_owner_secret:
+                'p%2540ssw0rd%26s3cr3t',  # "clientSecret;resourceOwnerSecret"
+            ';' + resource_owner_secret: '%26s3cr3t'  # ";resourceOwnerSecret"
         }
+
         for secrets_pair in values.keys():
+            # Plugin uses the raw_auth instead of username and password
+            plugin.raw_auth = self._clientId + ':' + secrets_pair
+            auth = plugin.get_auth('username-ignored', 'password-ignored')
 
-            auth = plugin.get_auth(self._username, secrets_pair)
-
-            oauth_auth = self._apply_oauth1_plugin(auth)
+            oauth_auth, req = self._apply_oauth1_plugin(auth)
 
             self.assertEqual(oauth_auth['oauth_signature_method'], 'PLAINTEXT')
-            self.assertEqual(oauth_auth['oauth_consumer_key'], self._username)
+            self.assertEqual(oauth_auth['oauth_consumer_key'], self._clientId)
 
             # With PLAINTEXT, the signature is just the secret value (encoded)
             # followed by an encoded ampersand ("%26") and the token key.
 
             expected_sig = values[secrets_pair]
 
-            self.assertEqual(oauth_auth['oauth_signature'], expected_sig)
+            self.assertEqual(oauth_auth['oauth_signature'], expected_sig,
+                             msg=f'wrong signature for {secrets_pair}')
+
+    def test_advanced_auth_values(self):
+        plugin = httpie_oauth1.OAuth1PlaintextPlugin()
+
+        client_secret = 'p@ssw0rd'
+        resource_owner_secret = 's3cr3t'
+
+        components = ''.join([
+            self._clientId,
+            ';',
+            self._rsrc_owner_id,
+            ':',
+            client_secret,
+            ';',
+            resource_owner_secret,
+            ':',
+            'https://oauth1.api.example.com:433/example/callback',
+            ]
+        )
+
+        # Transmit parameters in query parameters
+
+        plugin.raw_auth = f'{components}:query'
+        auth = plugin.get_auth('username-ignored', 'password-ignored')
+
+        _not_used, req = self._apply_oauth1_plugin(auth, skip_checks=True)
+
+        self.assertTrue(req.path_url.startswith('/path?a=b&'))
+        self._check_parameters_in_url_encoded_string(req.path_url)
+        self.assertIsNone(req.body)
+
+        # Transmit parameters in body
+
+        plugin.raw_auth = f'{components}:body'
+        auth = plugin.get_auth('username-ignored', 'password-ignored')
+
+        _not_used, req = self._apply_oauth1_plugin(auth, skip_checks=True)
+
+        self.assertEqual(req.path_url, '/path?a=b')
+        self._check_parameters_in_url_encoded_string(req.body.decode('utf-8'))
+
+        # Transmit parameters in header
+
+        plugin.raw_auth = components
+        auth = plugin.get_auth('username-ignored', 'password-ignored')
+
+        params, req = self._apply_oauth1_plugin(auth, skip_checks=False)
+
+        self._check_parameters_in_header(params, req)
+        self.assertEqual(params['oauth_callback'],
+                         'https%3A%2F%2Foauth1.api.example.com%3A433%2F'
+                         'example%2Fcallback')
+
+        # Transmit parameters in header ("something-else" is part of callback)
+
+        plugin.raw_auth = f'{components}:something-else'
+        auth = plugin.get_auth('username-ignored', 'password-ignored')
+
+        params, req = self._apply_oauth1_plugin(auth, skip_checks=False)
+
+        self._check_parameters_in_header(params, req)
+        self.assertEqual(params['oauth_callback'],
+                         'https%3A%2F%2Foauth1.api.example.com%3A433%2F'
+                         'example%2Fcallback%3Asomething-else')
+
+        # Transmit parameters in header (explicit transmission method specified)
+
+        plugin.raw_auth = f'{components}:header'
+        auth = plugin.get_auth('username-ignored', 'password-ignored')
+
+        params, req = self._apply_oauth1_plugin(auth, skip_checks=False)
+
+        self._check_parameters_in_header(params, req)
+        self.assertEqual(params['oauth_callback'],
+                         'https%3A%2F%2Foauth1.api.example.com%3A433%2F'
+                         'example%2Fcallback')
+
+    def _check_parameters_in_url_encoded_string(self, value: str):
+        # check value of the URL (query string) or body
+        self.assertTrue('&oauth_signature_method=PLAINTEXT' in value)
+        self.assertTrue(f'&oauth_consumer_key={self._clientId}&' in value)
+        self.assertTrue(f'&oauth_token={self._rsrc_owner_id}&' in value)
+        self.assertTrue(''.join([
+            '&oauth_callback=',
+            'https%3A%2F%2Foauth1.api.example.com%3A433',
+            '%2Fexample%2Fcallback&']) in value)
+        self.assertTrue('&oauth_signature=p%2540ssw0rd%26s3cr3t' in value)
+
+    def _check_parameters_in_header(self, params, req):
+        self.assertEqual(req.path_url, '/path?a=b')
+        self.assertEqual(params['oauth_signature_method'], 'PLAINTEXT')
+        self.assertEqual(params['oauth_consumer_key'], self._clientId)
+        self.assertEqual(params['oauth_token'], self._rsrc_owner_id)
+        self.assertIsNone(req.body)
 
 
-# ################################################################
+
+
+    # ################################################################
 
 if __name__ == '__main__':
     unittest.main()
