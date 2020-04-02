@@ -23,18 +23,24 @@ be confused with an RSA public or private key.
 
 import sys
 from abc import ABC
+from getpass import getpass
 
 from httpie.plugins import AuthPlugin
 from requests_oauthlib import OAuth1
-from oauthlib.oauth1 import \
-    SIGNATURE_HMAC_SHA1, \
-    SIGNATURE_HMAC_SHA256, \
-    SIGNATURE_HMAC_SHA512, \
-    SIGNATURE_RSA_SHA1, \
-    SIGNATURE_RSA_SHA256, \
-    SIGNATURE_RSA_SHA512, \
+from oauthlib.oauth1 import (
+    SIGNATURE_HMAC_SHA1,
+    SIGNATURE_HMAC_SHA256,
+    SIGNATURE_HMAC_SHA512,
+    SIGNATURE_RSA_SHA1,
+    SIGNATURE_RSA_SHA256,
+    SIGNATURE_RSA_SHA512,
     SIGNATURE_PLAINTEXT
-
+)
+from oauthlib.oauth1 import (
+    SIGNATURE_TYPE_AUTH_HEADER,
+    SIGNATURE_TYPE_QUERY,
+    SIGNATURE_TYPE_BODY
+)
 __version__ = '1.1.0'
 __author__ = 'Hoylen Sue'
 __licence__ = 'BSD'
@@ -88,14 +94,11 @@ class _OAuth1RsaPluginBase(AuthPlugin, ABC):
 
     # ----------------
 
-    # This plugin requires credentials to be specified with `--auth`
-    auth_require = True
+    auth_require = True   # plugin requires `--auth`
 
-    # This plugin does not want the argument to `--auth` to be parsed by HTTPie
-    auth_parse = False
+    auth_parse = False  # plugin does not want HTTPie to parse `--auth` argument
 
-    # This plugin does not prompt for a password
-    prompt_password = False
+    prompt_password = False  # plugin does not prompt for a password
 
     # ================================================================
 
@@ -282,113 +285,58 @@ class _OAuth1RsaPluginBase(AuthPlugin, ABC):
 # ################################################################
 
 class OAuth1RsaSha1Plugin(_OAuth1RsaPluginBase):
-    """
-    Plugin for RSA-SHA1.
-    """
-
-    # This plugin is activated if this value is the argument to `--auth-type`
     auth_type = 'oauth1-rsa-sha1'
 
     name = 'OAuth 1.0a RSA-SHA1'
 
-    # ================================================================
-
     def get_auth(self, username=None, password=None):
-        """
-        Generate OAuth 1.0a 2-legged RSA-SHA1 authentication for HTTPie.
-
-        Note: Passpharse protected private keys are not yet supported.
-
-        :param username: ignored since auth_parse is False
-        :param password: ignored since auth_parse is False
-        :return: requests_oauthlib.oauth1_auth.OAuth1 object
-        """
-
         return self.the_auth(SIGNATURE_RSA_SHA1)
 
 
 # ################################################################
 
 class OAuth1RsaSha256Plugin(_OAuth1RsaPluginBase):
-    """
-    Plugin for RSA-SHA256.
-    """
-
-    # This plugin is activated if this value is the argument to `--auth-type`
     auth_type = 'oauth1-rsa-sha256'
 
     name = 'OAuth 1.0a RSA-SHA256'
 
-    # ================================================================
-
     def get_auth(self, username=None, password=None):
-        """
-        Generate OAuth 1.0a 2-legged RSA-SHA256 authentication for HTTPie.
-
-        This is a non-standard signature method, but is more stronger
-        than the standard RSA-SHA1 signature method.
-
-        :param username: ignored since auth_parse is False
-        :param password: ignored since auth_parse is False
-        :return: requests_oauthlib.oauth1_auth.OAuth1 object
-        """
-
         return self.the_auth(SIGNATURE_RSA_SHA256)
 
 
 # ################################################################
 
 class OAuth1RsaSha512Plugin(_OAuth1RsaPluginBase):
-    """
-    Plugin for RSA-SHA256.
-    """
-
-    # This plugin is activated if this value is the argument to `--auth-type`
     auth_type = 'oauth1-rsa-sha512'
 
     name = 'OAuth 1.0a RSA-SHA512'
 
-    # ================================================================
-
     def get_auth(self, username=None, password=None):
-        """
-        Generate OAuth 1.0a 2-legged RSA-SHA512 authentication for HTTPie.
-
-        This is a non-standard signature method, but is more stronger
-        than the standard RSA-SHA1 signature method.
-
-        :param username: ignored since auth_parse is False
-        :param password: ignored since auth_parse is False
-        :return: requests_oauthlib.oauth1_auth.OAuth1 object
-        """
-
         return self.the_auth(SIGNATURE_RSA_SHA512)
 
 
 # ################################################################
 
-class _OAuth1HmacPluginBase(AuthPlugin, ABC):
+class _OAuth1SecretsBase(AuthPlugin, ABC):
     """
-    Base class for HMAC-based plugins.
+    Base class for HMAC-based and PLAINTEXT plugins.
+
+    This is for signature methods that use secrets (i.e. client secrets and/or
+    resource owner secrets).
     """
 
-    description = '--auth CLIENT_ID[:CLIENT_SECRET[:RESOURCE_OWNER_SECRET]]'
+    description = \
+        '--auth CLIENTID[;RESOURCEOWNERID][:SECRETS[:CALLBACK[:TYPE]]]'
 
-    # This plugin requires credentials to be specified with `--auth`
-    auth_require = True
+    auth_require = True  # plugin requires `--auth`
 
-    # This plugin wants the argument to `--auth` to be parsed by HTTPie
-    auth_parse = True
+    auth_parse = False  # plugin does not want HTTPie to parse `--auth` argument
 
-    # This plugin can prompt for a password
-    prompt_password = True
+    prompt_password = False  # plugin does not prompt for a password
 
     # ================================================================
 
-    @staticmethod
-    def the_auth(client_id: str,
-                 secrets: str,
-                 signature_method: str):
+    def the_auth(self, signature_method: str):
         """
         The secrets is used as the client secret, if it does not contain any
         colons. If it contains one or more colons, the substring before the
@@ -398,163 +346,165 @@ class _OAuth1HmacPluginBase(AuthPlugin, ABC):
         with a colon means there is no resource owner secret. A value that
         starts with a colon means there is no client secret.
 
-        :param client_id: used as the client ID
-        :param secrets: client secret and/or resource owner secret
         :param signature_method: the HMAC-based signature method to use
         :return:
         """
 
-        client_secret, resource_owner_secret = _split_secrets(secrets)
+        # Since auth_parse is False, argument to `--auth` is in self.raw_auth
+
+        # Break up into components: identities:secrets:callback:type
+
+        _default_type = SIGNATURE_TYPE_AUTH_HEADER
+
+        components = self.raw_auth.split(':')
+        if len(components) == 1:
+            # identities
+            ids_component = components[0]
+            secrets = None
+            callback = None
+            sig_type = _default_type
+        elif len(components) == 2:
+            # identities:secrets
+            ids_component = components[0]
+            secrets = components[1]
+            callback = None
+            sig_type = _default_type
+        else:
+            # identities:secrets:callback or identities:secrets:callback:type
+            ids_component = components[0]
+            secrets = components[1]
+
+            end_of_callback = len(components) - 1
+
+            last_component = components[-1]
+            if last_component == '':
+                sig_type = _default_type
+            elif last_component == 'header':
+                sig_type = SIGNATURE_TYPE_AUTH_HEADER
+            elif last_component == 'query':
+                sig_type = SIGNATURE_TYPE_QUERY
+            elif last_component == 'body':
+                sig_type = SIGNATURE_TYPE_BODY
+            else:
+                # Last component is not a type value: include it in the callback
+                end_of_callback = end_of_callback + 1
+                sig_type = _default_type
+
+            callback = ':'.join(components[2:end_of_callback])
+
+        # Split identities component into clientID;resourceOwnerID
+
+        parts = ids_component.split(';')
+        if 2 < len(parts):
+            sys.stderr.write(
+                'http: usage error: invalid --auth: too many semicolons'
+                ' in "clientID[;resourceOwnerId]" component')
+            sys.exit(2)
+        client_id = parts[0].strip()
+        resource_owner_id = parts[1].strip() if 1 < len(parts) else None
+
+        # Get the secrets component, which may be embedded in the --auth
+        # argument, read from a file, or prompt the user for it.
+
+        if secrets is None or len(secrets) == 0:
+            # Blank: Prompt for the secrets
+            try:
+                secrets = getpass(
+                    'http: client secret or clientSecret;resourceOwnerSecret: ')
+            except EOFError:  # if ^D entered
+                sys.exit(1)
+        elif secrets.startswith('<'):
+            # Starts with a '<': read the secrets from a file
+            secrets_filename = secrets[1:]
+            try:
+                secrets = None
+                fp = open(secrets_filename, mode='r', encoding='UTF-8')
+                for line in iter(fp.readline, ''):
+                    trimmed = line.strip()
+                    if len(trimmed) != 0 and not trimmed.startswith('#'):
+                        secrets = trimmed
+                        break
+                fp.close()
+                if secrets is None:
+                    sys.stderr.write(
+                        f'http: {secrets_filename}:'
+                        f' no line with secrets found in file')
+                    sys.exit(2)
+            except FileNotFoundError:
+                sys.stderr.write(
+                    'http: secrets file not found: ' + secrets_filename)
+                sys.exit(2)
+        # else use the component from `--auth` as the secrets
+
+        # Split secrets component into clientSecret;resourceOwnerSecret
+
+        parts = secrets.split(';')
+        if 2 < len(parts):
+            sys.stderr.write(
+                'http: usage error: too many semicolons'
+                ' in "clientSecret[;resourceOwnerSecret]" component')
+            sys.exit(2)
+        client_secret = parts[0].strip()
+        resource_owner_secret = parts[1].strip() if 1 < len(parts) else None
+
+        # Note: they must be stripped of leading and trailing whitespace
+        # for consistency. Secrets values from a file are stripped, so it would
+        # be inconsistent to not do the same for secrets values from the command
+        # line or the input from a prompt. Also, whitespace before or after any
+        # semicolon is stripped, otherwise it would be very complicated and
+        # confusing to describe all the possible situations where whitespace
+        # is preserved or not.
+
+        # Create the OAuth1 with the supplied credentials and options
 
         return OAuth1(signature_method=signature_method,
                       client_key=client_id,
                       client_secret=client_secret,
-                      resource_owner_secret=resource_owner_secret)
+                      resource_owner_key=resource_owner_id,
+                      resource_owner_secret=resource_owner_secret,
+                      callback_uri=callback,
+                      signature_type=sig_type)
 
 
 # ################################################################
 
-class OAuth1HmacSha1Plugin(_OAuth1HmacPluginBase):
-    """
-    Plugin for HMAC-SHA1.
-    """
-
-    # This plugin is activated if this value is the argument to `--auth-type`
+class OAuth1HmacSha1Plugin(_OAuth1SecretsBase):
     auth_type = 'oauth1-hmac-sha1'
 
     name = 'OAuth 1.0a HMAC-SHA1'
 
-    # ================================================================
-
     def get_auth(self, username=None, password=None):
-        """
-        Generate OAuth 1.0a 2-legged HMAC-SHA1 authentication for HTTPie.
-
-        :param username: client key
-        :param password: client secret
-        :return: requests_oauthlib.oauth1_auth.OAuth1 object
-        """
-
-        return self.the_auth(username, password, SIGNATURE_HMAC_SHA1)
+        return self.the_auth(SIGNATURE_HMAC_SHA1)
 
 
 # ################################################################
 
-class OAuth1HmacSha256Plugin(_OAuth1HmacPluginBase):
-    """
-    Plugin for HMAC-SHA256.
-    """
-
-    # This plugin is activated if this value is the argument to `--auth-type`
+class OAuth1HmacSha256Plugin(_OAuth1SecretsBase):
     auth_type = 'oauth1-hmac-sha256'
 
     name = 'OAuth 1.0a HMAC-SHA256'
 
-    # ================================================================
-
     def get_auth(self, username=None, password=None):
-        """
-        Generate OAuth 1.0a 2-legged HMAC-SHA256 authentication for HTTPie.
-
-        :param username: client key
-        :param password: client secret
-        :return: requests_oauthlib.oauth1_auth.OAuth1 object
-        """
-
-        return self.the_auth(username, password, SIGNATURE_HMAC_SHA256)
+        return self.the_auth(SIGNATURE_HMAC_SHA256)
 
 
 # ################################################################
 
-class OAuth1HmacSha512Plugin(_OAuth1HmacPluginBase):
-    """
-    Plugin for HMAC-SHA512.
-    """
-
-    # This plugin is activated if this value is the argument to `--auth-type`
+class OAuth1HmacSha512Plugin(_OAuth1SecretsBase):
     auth_type = 'oauth1-hmac-sha512'
 
     name = 'OAuth 1.0a HMAC-SHA512'
 
-    # ================================================================
-
     def get_auth(self, username=None, password=None):
-        """
-        Generate OAuth 1.0a 2-legged HMAC-SHA512 authentication for HTTPie.
-
-        :param username: client key
-        :param password: client secret
-        :return: requests_oauthlib.oauth1_auth.OAuth1 object
-        """
-
-        return self.the_auth(username, password, SIGNATURE_HMAC_SHA512)
+        return self.the_auth(SIGNATURE_HMAC_SHA512)
 
 
 # ################################################################
 
-class OAuth1PlaintextPlugin(AuthPlugin):
-    """
-    Plugin for PLAINTEXT.
-    """
-
-    # This plugin is activated if this value is the argument to `--auth-type`
+class OAuth1PlaintextPlugin(_OAuth1SecretsBase):
     auth_type = 'oauth1-plaintext'
 
     name = 'OAuth 1.0a PLAINTEXT'
 
-    description = '--auth CLIENT_ID[:CLIENT_SECRET[:RESOURCE_OWNER_SECRET]]'
-
-    # This plugin requires credentials to be specified with `--auth`
-    auth_require = True
-
-    # This plugin wants the argument to `--auth` to be parsed by HTTPie
-    auth_parse = True
-
-    # This plugin can prompt for a password
-    prompt_password = True
-
-    # ================================================================
-
     def get_auth(self, username=None, password=None):
-        """
-        Generate OAuth 1.0a 2-legged PLAINTEXT authentication for HTTPie.
-
-        :param username: client key
-        :param password: client secret
-        :return: requests_oauthlib.oauth1_auth.OAuth1 object
-        """
-
-        client_secret, resource_owner_secret = _split_secrets(password)
-
-        return OAuth1(signature_method=SIGNATURE_PLAINTEXT,
-                      client_key=username,
-                      client_secret=client_secret,
-                      resource_owner_secret=resource_owner_secret)
-
-
-# ################################################################
-
-def _split_secrets(secrets: str):
-    """
-    Extract the client secret and/or resource owner secret.
-
-    The secrets is used as the client secret, if it does not contain any
-    colons. If it contains one or more colons, the substring before the
-    first colon is used as the client secret and the part after the first
-    colon is used as the resource owner secret (also called the "token
-    shared-secret" in OAuth1 terminology). A value with no colons, or ends
-    with a colon means there is no resource owner secret. A value that
-    starts with a colon means there is no client secret.
-
-    :param secrets: combine string with values separated by a colon
-    :return: tuple with client secret and resource owner secret
-    """
-    first_colon_pos = secrets.find(':')
-    if first_colon_pos != -1:
-        client_secret = secrets[:first_colon_pos]
-        resource_owner_secret = secrets[first_colon_pos + 1:]
-    else:
-        client_secret = secrets
-        resource_owner_secret = None
-
-    return client_secret, resource_owner_secret
+        return self.the_auth(SIGNATURE_PLAINTEXT)
