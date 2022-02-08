@@ -5,7 +5,7 @@
 #     make venv-create
 #     . venv/bin/activate
 #     make install-dev
-#     make install-local-deps
+#     # no longer needed: make install-local-deps
 #     make test
 #     # make changes and test them
 #     make clean
@@ -39,11 +39,12 @@ help:
 	@echo "Targets:"
 	@echo "  venv-create        - create virtual environment"
 	@echo "  venv-delete        - delete virtual environment"
-	@echo "  venv-reset         - delete and create a new dev-rsa + local-deps venv"
+	@echo "  venv-reset         - delete and create a new dev-rsa + venv"
+#	@echo "  venv-reset         - delete and create a new dev-rsa + local-deps venv"
 	@echo
 	@echo "  install-dev        - install as a link (in venv)"
 	@echo "  install-dev-rsa    - install as a link (in venv) with RSA support"
-	@echo "  install-local-deps - install dependencies as links (in venv)"
+#	@echo "  install-local-deps - install dependencies as links (in venv)"
 	@echo "  install-normal     - install a copy (in current environment)"
 	@echo "  install-normal-rsa - install a copy (in current environment) with RSA support"
 	@echo
@@ -75,7 +76,9 @@ venv-delete:
 
 # Delete any current venv and recreate it.
 
-venv-reset: venv-delete venv-create install-dev-rsa install-local-deps
+venv-reset: venv-delete venv-create install-dev-rsa
+
+# removed from above dependencies: install-local-deps
 
 #----------------------------------------------------------------
 
@@ -99,24 +102,24 @@ install-dev-rsa:
 	  exit 1 ; \
 	fi
 
-install-local-deps:
-	@if [ -e venv ]; then \
-	  . venv/bin/activate && \
-	  DIR=`cd .. && pwd` && \
-	  for PKG in 'oauthlib' ; do \
-	    if [ -d "$${DIR}/$${PKG}" ]; then \
-	      PKGDIR="file://$${DIR}/$${PKG}" ; \
-	      echo "linking $${PKG} to $${PKGDIR}"; \
-	      pip install --editable "$${PKGDIR}" ; \
-	    else \
-	      echo "Error: local copy of package not found: $${PKG}" ; \
-	      exit 1 ; \
-	    fi \
-	  done \
-	else \
-	  echo "install-local-deps: venv does not exist"; \
-	  exit 1 ; \
-	fi
+#install-local-deps:
+#	@if [ -e venv ]; then \
+#	  . venv/bin/activate && \
+#	  DIR=`cd .. && pwd` && \
+#	  for PKG in 'oauthlib' ; do \
+#	    if [ -d "$${DIR}/$${PKG}" ]; then \
+#	      PKGDIR="file://$${DIR}/$${PKG}" ; \
+#	      echo "linking $${PKG} to $${PKGDIR}"; \
+#	      pip install --editable "$${PKGDIR}" ; \
+#	    else \
+#	      echo "Error: local copy of package not found: $${PKG}" ; \
+#	      exit 1 ; \
+#	    fi \
+#	  done \
+#	else \
+#	  echo "install-local-deps: venv does not exist"; \
+#	  exit 1 ; \
+#	fi
 
 install-normal:
 	pip install .

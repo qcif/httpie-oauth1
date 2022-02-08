@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.0
+
+- Using officially released oauthlib 3.1.1 (instead of dev release from GitHub).
+
 ## 1.1.0
 
 - Added support for HMAC-512, RSA-256 and RSA-512 signature methods.

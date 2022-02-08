@@ -13,7 +13,7 @@ from setuptools import setup
 
 setup(
     name='httpie-oauth1',
-    version='1.1.0',
+    version='1.2.0',
     description='OAuth 1.0a authentication plugin for HTTPie',
     author='Hoylen Sue',
     author_email='hoylen@hoylen.com',
@@ -48,17 +48,7 @@ setup(
     install_requires=[
         'httpie>=2.0.0',
         'requests_oauthlib>=1.3.0',
-
-        # Note: this plugin needs a version of OAuthLib with HMAC-SHA512,
-        # RSA-SHA256 and RSA-SHA512. These are not available in OAuthLib 3.1.0,
-        # so it must be obtained from the "rsa-sha256" branch of QCIF's fork
-        # of it on GitHub.
-        #
-        # A pull request for it has been submitted to OAuthLib, so if/when it
-        # becomes available in a future release on PyPI, change the following
-        # GitHub reference to the released version:
-        #     'oauthlib>=x.x.x',
-        'oauthlib @ git+https://github.com/qcif/oauthlib.git@rsa-sha256',
+        'oauthlib>=3.1.1',
     ],
 
     extras_require={
