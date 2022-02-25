@@ -13,8 +13,8 @@ from setuptools import setup
 
 setup(
     name='httpie-oauth1',
-    version='1.2.0',
-    description='OAuth 1.0a authentication plugin for HTTPie',
+    version='1.2.2',
+    description='OAuth 1.0a authentication plugin for HTTPie.',
     author='Hoylen Sue',
     author_email='hoylen@hoylen.com',
     license='BSD',

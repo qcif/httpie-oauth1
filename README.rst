@@ -1,68 +1,63 @@
-httpie-oauth
-############
+httpie-oauth1
+#############
 
 Authentication plugin for `HTTPie <https://httpie.org/>`_ to support
-OAuth 1.0a.  HTTPie is a Python command line program that makes
+**OAuth 1.0a**.  HTTPie is a Python command line program that makes
 HyperText Transfer Protocol (HTTP) requests. Plugins allow it to use
 different authentication protocols.
+
+**Note:** OAuth 1.0a is very different to OAuth 2.0. This plugin
+does **not** support OAuth 2.0.
 
 This plugin supports all the standard *signature methods* in OAuth
 1.0a (as defined by `RFC 5849 <https://tools.ietf.org/html/rfc5849>`_):
 
-  - HMAC-SHA1
-  - RSA-SHA1
-  - PLAINTEXT
+* HMAC-SHA1
+* RSA-SHA1
+* PLAINTEXT
 
 It also supports non-standard *signature methods*, that replaces SHA-1
 with more secure hashing algorithms:
 
-  - HMAC-SHA256
-  - HMAC-SHA512
-  - RSA-SHA256
-  - RSA-SHA512
+* HMAC-SHA256
+* HMAC-SHA512
+* RSA-SHA256
+* RSA-SHA512
 
 This plugin supports **two-legged OAuth 1.0a** with all the available
 *signature methods*.
 
-This plugin supports **three-legged OAuth 1.0a** with the PLAINTEXT
-and HMAC-based *signature methods*. Some values will have to be manually
-copied between the different requests.
+This plugin can be used to support **three-legged OAuth 1.0a** with
+the PLAINTEXT and HMAC-based *signature methods*, if some values are
+manually copied between the different requests.
 
 ************
 Installation
 ************
 
-**Important: install this package from its GitHub repository.  It is
-not yet available on PyPI.  For example, to install it with the extras
-for RSA:**
-
-.. code-block:: bash
-
-    $ pip install 'git+https://github.com/qcif/httpie-oauth1#egg=httpie-oauth1[rsa]'
-
-Standard install
-================
+Standard install without RSA
+============================
 
 A standard install has all the HMAC-based and PLAINTEXT *signature
-methods*, but does not have any of the RSA-based *signature methods*.
+methods*, but does **not** have any of the RSA-based *signature methods*.
 
 .. code-block:: bash
 
     $ pip install httpie-oauth1
 
-Since *httpie-oauth1* depends on *httpie*, *httpie* is also installed if
-it has not already installed.
+Since *httpie-oauth1* depends on *httpie*, this also installs *httpie*
+if it has not already been installed.
 
 Run ``http --help`` and (under the "Authentication" section) the OAuth
 1.0a authentication mechanisms (e.g. "oauth1-hmac-sha1") will be
 available for the ``--auth-type``.
 
 
-With extras for RSA
-===================
+Install with extras for RSA
+===========================
 
-To include the RSA-based *signature methods*, install it with the
-"rsa" extras:
+To include support for the RSA-based *signature methods*, install it
+with the "rsa" extras:
 
 .. code-block:: bash
 
@@ -98,11 +93,12 @@ HMAC-SHA1
 To use the HMAC-SHA1 *signature method*, for the ``--auth-type``
 argument use ``oauth1-hmac-sha1``.
 
-The `--auth` can be the *client identifier*, and it will prompt for
-the *client secret*.
+The argument to ``--auth`` can be just the *client identifier*, and it
+will prompt for the *client secret*.
 
-The `--auth` can also be the *client identifier*, a colon, a less-than
-sign, and the name of a file to read the *client secret* from.
+The argument to ``--auth`` can also be the *client identifier*, a
+colon, a less-than sign, and the name of a file to read the *client
+secret* from.
 
 .. code-block:: bash
 
@@ -113,7 +109,7 @@ sign, and the name of a file to read the *client secret* from.
 Note: the quotes are necessary, because the shell treats the less-than
 sign as a special character.
 
-The value can just have the *client secret* after the colon (when
+The value can also just have the *client secret* after the colon (when
 there is no less-than sign). But this is not recommended, because
 putting passwords on the command line is insecure.
 
@@ -187,7 +183,7 @@ Other signature methods
 =======================
 
 The other signature methods work in the same way as HMAC-SHA1 and
-RSA-SHA1, but with these values for the ``--auth-type``:
+RSA-SHA1, but using these arguments for the ``--auth-type`` option:
 
 - ``oauth-hmac-sha256`` for HMAC-SHA256
 - ``oauth-hmac-sha512`` for HMAC-SHA512
@@ -201,12 +197,12 @@ The HMAC-based and PLAINTEXT signature methods supports many
 properties with the ``--auth`` argument. It can specify
 these values to the request:
 
-  * client identifier
-  * client secret
-  * resource owner identifier
-  * resource owner secret
-  * callback URI
-  * parameter transmission mechanism
+* client identifier
+* client secret
+* resource owner identifier
+* resource owner secret
+* callback URI
+* parameter transmission mechanism
 
 The argument processed as components separated by colons. It can have
 between 1 to 4 components: identity, secrets, callback and type.  Components
@@ -231,9 +227,9 @@ colons, which all URIs do.
 The parameter transmission mechanism indicates where the OAuth 1.0a
 parameters appear in the request:
 
- - "query" means in the URI query parameters;
- - "body" means in the HTTP body; or
- - "header" means in hthe HTTP "Authorization" header.
+* "query" means in the URI query parameters;
+* "body" means in the HTTP body; or
+* "header" means in hthe HTTP "Authorization" header.
 
 The header is the default, if the parameter transmission mechanism is
 not provided.
@@ -271,9 +267,9 @@ Examples ``--auth`` arguments:
 Secrets file
 ------------
 
-The first line suitable line in the secrets file will be either the
-*client secret*, or the *client secret* and the *resource owner
-secret* separated by a semicolon.
+The first suitable line in the secrets file will be either the *client
+secret*, or the *client secret* and the *resource owner secret*
+separated by a semicolon.
 
 When searching for the first suitable line, it ignores empty lines and
 lines with only whitespace.  Lines starting with a hash ("#"), with
@@ -301,6 +297,14 @@ Known limitations
 
 - UTF-8 is the encoding for the secrets file.
 
+*******
+History
+*******
+
+This plugin is a fork of the
+`httpie-oauth <https://pypi.org/project/httpie-oauth/>`_ plugin,
+which is no longer being maintained.
+
 ***************
 Troubleshooting
 ***************
@@ -310,13 +314,15 @@ ModuleNotFoundError: No module named 'jwt'
 
 The `PyJWT <https://github.com/jpadilla/pyjwt>`_ module is not installed.
 
-This httpie-oauth1 package depends on oauthlib, which has pyjwt (and
-cryptography) as optional extra dependencies. They are optional, since
-they are not needed for HMAC-based signatures. But RSA-based
-signatures needs them.  Manually install the ``pyjwt`` Python package.
+This *httpie-oauth1* package depends on the *oauthlib* package, which
+has *pyjwt* (and *cryptography*) as optional extra dependencies. They
+are optional, since they are not needed for HMAC-based signatures. But
+RSA-based signatures needs them.  Manually install the ``pyjwt``
+Python package.
 
 Note: the name of the package to install is "pyjwt", not "jwt". They
-both contain a module called "jwt".
+both contain a module called "jwt", but they are very different
+implementations.
 
 .. code-block:: bash
 
@@ -331,8 +337,8 @@ Uninstall it and install the "pyjwt" package:
 
 .. code-block:: bash
 
-    $ pip uninstall jwt  # optional
-    $ pip install pyjwt
+    $ pip uninstall jwt  # uninstall the wrong implementation of JWT
+    $ pip install pyjwt  # install the correct implementation of JWT
 
 AttributeError: module 'jwt.algorithms' has no attribute 'RSAAlgorithm'
 =======================================================================
