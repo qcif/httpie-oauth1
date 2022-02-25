@@ -1,4 +1,7 @@
 .idea
 __pycache__
+requirements.txt
 httpie_oauth1.egg-info
+doc
+dist
 venv
