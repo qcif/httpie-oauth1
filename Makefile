@@ -50,6 +50,8 @@ help:
 	@echo
 	@echo "  test               - run unit tests"
 	@echo
+	@echo "  publish            - publish to PyPi"
+	@echo
 	@echo "  clean              - delete all generated files (except venv)"
 	@echo
 	@echo 'See the comments in the "Makefile" for more information.'
@@ -133,7 +135,16 @@ test:
 	@python3 test/test_httpie_oauth1.py
 
 #----------------------------------------------------------------
+# Publishing to PyPi
+# https://medium.com/@joel.barmettler/how-to-upload-your-python-package-to-pypi-65edc5fe9c56
+
+publish:
+	rm -f dist/*.tar.gz
+	python setup.py sdist
+	twine upload dist/*
+
+#----------------------------------------------------------------
 
 clean:
 	@rm -f *~
-	@rm -rf *.egg-info __pycache__ build dist
+	@rm -rf *.egg-info __pycache__ build doc dist

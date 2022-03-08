@@ -13,7 +13,7 @@ from setuptools import setup
 
 setup(
     name='httpie-oauth1',
-    version='1.2.2',
+    version='1.2.3',
     description='OAuth 1.0a authentication plugin for HTTPie.',
     author='Hoylen Sue',
     author_email='hoylen@hoylen.com',
@@ -22,7 +22,7 @@ setup(
     download_url='https://github.com/qcif/httpie-oauth1',
     py_modules=['httpie_oauth1'],
     zip_safe=False,
-    python_requires='>3.6.0',
+    python_requires='>=3.6.0',
 
     entry_points={
         'httpie.plugins.auth.v1': [
@@ -56,6 +56,9 @@ setup(
         'rsa': [
             'cryptography>=2.5.0',
             'pyjwt>=1.7.0'
+        ],
+        'dev': [
+            'twine>=3.8.0',
         ],
     },
 
